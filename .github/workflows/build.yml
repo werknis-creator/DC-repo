@@ -5,15 +5,18 @@ on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: nold360/kallistios-sdk:latest
     
     steps:
+      # 1. Pobieramy kod bezpiecznie na maszynie hosta (tu Node 24 zadziała idealnie)
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Compile
-        run: make
+      # 2. Odpalamy kontener tylko do wykonania komendy 'make' montując nasz folder jako roboczy
+      - name: Compile Code inside Container
+        run: |
+          docker run --rm -v ${{ github.workspace }}:/project -w /project nold360/kallistios-sdk:latest make
 
+      # 3. Wyciągamy gotowy plik binarny jako artefakt do pobrania
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
