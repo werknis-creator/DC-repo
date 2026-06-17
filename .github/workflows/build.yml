@@ -10,20 +10,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Czyste uruchomienie 'make' przy użyciu fabrycznych zmiennych środowiskowych kontenera
+      # Uruchamiamy powłokę logowania (bash -l), która automatycznie konfiguruje środowisko KallistiOS
       - name: Compile Code inside Container
         run: |
           if [ -f "Makefile" ]; then
             echo "Znaleziono Makefile w folderze glownym."
-            docker run --rm -v ${{ github.workspace }}:/project -w /project --entrypoint "" nold360/kallistios-sdk:latest make
+            docker run --rm -v ${{ github.workspace }}:/project -w /project --entrypoint /bin/bash nold360/kallistios-sdk:latest -l -c "make"
           elif [ -f ".devcontainer/Makefile" ]; then
             echo "Znaleziono Makefile w folderze .devcontainer."
-            docker run --rm -v ${{ github.workspace }}:/project -w /project/.devcontainer --entrypoint "" nold360/kallistios-sdk:latest make
+            docker run --rm -v ${{ github.workspace }}:/project -w /project/.devcontainer --entrypoint /bin/bash nold360/kallistios-sdk:latest -l -c "make"
           else
             echo "Blad: Nie znaleziono pliku Makefile!" && exit 1
           fi
 
-      # Ten krok uruchomi się tylko wtedy, gdy kompilacja powyżej zakończy się pełnym sukcesem
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
