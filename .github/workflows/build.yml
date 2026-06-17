@@ -6,18 +6,19 @@ jobs:
   build-dreamcast:
     runs-on: ubuntu-latest
     container:
-      image: dcemulation/kos:latest
+      image: einsteinx2/dcdev-kos-toolchain:latest
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
 
     - name: Install dependencies
-      run: apt-get update && apt-get install -y cmake genisoimage make git wget
-
-    - name: Download IP.BIN (Homebrew)
       run: |
-        # Pobieramy standardowy plik IP.BIN używany w homebrew
+        apt-get update
+        apt-get install -y cmake genisoimage make git wget
+
+    - name: Download IP.BIN
+      run: |
         wget -O ip.bin https://raw.githubusercontent.com/KallistiOS/kos/master/utils/ipbin/ip.bin
 
     - name: Configure and Build
