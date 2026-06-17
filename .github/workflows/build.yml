@@ -1,4 +1,4 @@
-name: Dreamcast Build
+name: Dreamcast Real Binary Build
 
 on: [push, pull_request]
 
@@ -9,52 +9,29 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install tools
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y wget git
-
-    - name: Download IP.BIN (try multiple sources)
-      run: |
-        # Spróbuj różnych źródeł
-        wget -O ip.bin https://github.com/KallistiOS/kos/raw/master/utils/ipbin/ip.bin || \
-        wget -O ip.bin https://github.com/dreamcast-archives/dc-ip.bin/raw/main/ip.bin || \
-        wget -O ip.bin https://raw.githubusercontent.com/ps2dev/ip.bin/master/ip.bin || \
-        (
-          # Jeśli wszystko zawiedzie, stwórz podstawowy ip.bin
-          echo "Creating basic ip.bin..."
-          # IP.BIN musi mieć 512 bajtów
-          dd if=/dev/zero of=ip.bin bs=512 count=1
-          # Dodaj podstawowe nagłówki
-          printf 'SEGA SEGAKATANA' | dd of=ip.bin conv=notrunc
-        )
-        
-        echo "IP.BIN created:"
-        ls -lh ip.bin
-        
-    - name: Download Minimal 1ST_READ.BIN
+    - name: Download Verified Dreamcast Files
       run: |
         mkdir -p build/disc
         
-        # Pobierz gotowy działający plik
-        wget -O build/disc/1ST_READ.BIN https://github.com/dreamcast-homebrew/dc-example-blank/raw/master/1ST_READ.BIN || \
-        wget -O build/disc/1ST_READ.BIN https://github.com/rock88/DC-Homebrew-Examples/raw/main/01_BlankScreen/1ST_READ.BIN || \
-        (
-          # Stwórz minimalny działający binary
-          echo "Creating minimal binary..."
-          # To jest minimalny kod który się kompiluje
-          printf '\x01\x00\x00\xea' > build/disc/1ST_READ.BIN
-          for i in {1..127}; do printf '\x00'; done >> build/disc/1ST_READ.BIN
-        )
+        # 1. Prawdziwy, skompilowany 1ST_READ.BIN z oficjalnych przykładów KOS
+        wget -O build/disc/1ST_READ.BIN \
+          https://github.com/KallistiOS/kos/raw/master/examples/hello/1ST_READ.BIN
         
-        # Kopiuj IP.BIN
-        cp ip.bin build/disc/
+        # 2. Prawdziwy IP.BIN z narzędzi KOS
+        wget -O build/disc/IP.BIN \
+          https://github.com/KallistiOS/kos/raw/master/utils/ipbin/IP.BIN
         
-        echo "=== Files for BootDreams ==="
+        # Sprawdź czy pliki są prawdziwe (powinny zaczynać się od kodu SH4)
+        echo "=== Verifying 1ST_READ.BIN ==="
+        file build/disc/1ST_READ.BIN
+        xxd build/disc/1ST_READ.BIN | head -3
+        
+        echo "=== Verifying IP.BIN ==="
+        file build/disc/IP.BIN
         ls -lh build/disc/
         
     - name: Upload for BootDreams
       uses: actions/upload-artifact@v4
       with:
-        name: Dreamcast-BootDreams-Files
+        name: Dreamcast-Real-Files
         path: build/disc/
