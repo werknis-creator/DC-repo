@@ -10,27 +10,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Wymuszamy wejście przez bash i jawne załadowanie środowiska KallistiOS
+      # Czyste uruchomienie 'make' przy użyciu fabrycznych zmiennych środowiskowych kontenera
       - name: Compile Code inside Container
         run: |
           if [ -f "Makefile" ]; then
             echo "Znaleziono Makefile w folderze glownym."
-            docker run --rm --entrypoint /bin/bash -v ${{ github.workspace }}:/project -w /project nold360/kallistios-sdk:latest -c "source /opt/toolchains/dc/kos/environ.sh 2>/dev/null || true; make"
+            docker run --rm -v ${{ github.workspace }}:/project -w /project --entrypoint "" nold360/kallistios-sdk:latest make
           elif [ -f ".devcontainer/Makefile" ]; then
             echo "Znaleziono Makefile w folderze .devcontainer."
-            docker run --rm --entrypoint /bin/bash -v ${{ github.workspace }}:/project -w /project/.devcontainer nold360/kallistios-sdk:latest -c "source /opt/toolchains/dc/kos/environ.sh 2>/dev/null || true; make"
+            docker run --rm -v ${{ github.workspace }}:/project -w /project/.devcontainer --entrypoint "" nold360/kallistios-sdk:latest make
           else
             echo "Blad: Nie znaleziono pliku Makefile!" && exit 1
           fi
 
-      # Krok diagnostyczny - pokaże w logach, co dokładnie wypluł kompilator
-      - name: Debug - List files after build
-        run: |
-          echo "=== Pliki w folderze glownym ==="
-          ls -la
-          echo "=== Pliki w folderze .devcontainer ==="
-          ls -la .devcontainer || echo "Brak folderu .devcontainer"
-
+      # Ten krok uruchomi się tylko wtedy, gdy kompilacja powyżej zakończy się pełnym sukcesem
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -38,4 +31,3 @@ jobs:
           path: |
             1st_read.bin
             .devcontainer/1st_read.bin
-        if: always()
