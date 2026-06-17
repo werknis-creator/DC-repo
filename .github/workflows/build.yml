@@ -1,0 +1,24 @@
+name: Build Dreamcast Game
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # Używamy gotowego kontenera z kompilatorami Dreamcast
+    container: ghcr.io/kazade/kallisti-os:latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Compile
+        run: |
+          # Komenda make automatycznie użyje zmiennych z kontenera
+          make
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MojaGraDreamcast
+          path: gra.elf
