@@ -9,19 +9,23 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Create Working Files
+    - name: Create Files Locally
       run: |
         mkdir -p build/disc
+        
+        # Stwórz IP.BIN lokalnie (512 bajtów z nagłówkiem SEGA)
+        dd if=/dev/zero of=build/disc/IP.BIN bs=512 count=1 2>/dev/null
+        printf 'SEGA SEGAKATANA ' | dd of=build/disc/IP.BIN conv=notrunc 2>/dev/null
         
         # Stwórz minimalny binary SH4
         printf '\x01\x00\x00\x00' > build/disc/1ST_READ.BIN
         printf '\xfe\xff\x09\x00' >> build/disc/1ST_READ.BIN
         dd if=/dev/zero bs=1 count=504 >> build/disc/1ST_READ.BIN 2>/dev/null
         
-        # Pobierz IP.BIN
-        wget -q -O build/disc/IP.BIN https://github.com/ps2dev/ip.bin/raw/master/ip.bin
-        
+        echo "Files created:"
         ls -lh build/disc/
+        xxd build/disc/1ST_READ.BIN
+        xxd build/disc/IP.BIN | head -5
 
     - name: Upload for BootDreams
       uses: actions/upload-artifact@v4
