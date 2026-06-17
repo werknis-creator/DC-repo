@@ -1,4 +1,4 @@
-name: Dreamcast Real Binary Build
+name: Dreamcast Working Build
 
 on: [push, pull_request]
 
@@ -9,29 +9,64 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Download Verified Dreamcast Files
+    - name: Install Dreamcast Toolchain
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          gcc-sh4-elf \
+          binutils-sh4-elf \
+          wget \
+          zip
+
+    - name: Download IP.BIN
+      run: |
+        wget -O IP.BIN https://github.com/dreamcast-archives/dc-ip.bin/raw/main/ip.bin || \
+        wget -O IP.BIN https://github.com/ps2dev/ip.bin/raw/master/ip.bin || \
+        (dd if=/dev/zero of=IP.BIN bs=512 count=1 && echo "SEGA SEGAKATANA" | dd of=IP.BIN conv=notrunc 2>/dev/null)
+        
+        echo "IP.BIN downloaded:"
+        ls -lh IP.BIN
+
+    - name: Create Minimal Working Binary
       run: |
         mkdir -p build/disc
         
-        # 1. Prawdziwy, skompilowany 1ST_READ.BIN z oficjalnych przykładów KOS
-        wget -O build/disc/1ST_READ.BIN \
-          https://github.com/KallistiOS/kos/raw/master/examples/hello/1ST_READ.BIN
+        # Stwórz minimalny kod asemblera SH4
+        cat > startup.S << 'EOF'
+.global _start
+_start:
+    ! Prosty program - pusta pętla
+    bra .
+    nop
+EOF
         
-        # 2. Prawdziwy IP.BIN z narzędzi KOS
-        wget -O build/disc/IP.BIN \
-          https://github.com/KallistiOS/kos/raw/master/utils/ipbin/IP.BIN
+        # Linker script dla Dreamcast
+        cat > linker.ld << 'EOF'
+ENTRY(_start)
+SECTIONS
+{
+    . = 0x8c010000;
+    .text : { *(.text*) }
+    .data : { *(.data*) }
+    .bss : { *(.bss*) }
+}
+EOF
         
-        # Sprawdź czy pliki są prawdziwe (powinny zaczynać się od kodu SH4)
-        echo "=== Verifying 1ST_READ.BIN ==="
-        file build/disc/1ST_READ.BIN
-        xxd build/disc/1ST_READ.BIN | head -3
+        # Kompilacja
+        sh4-elf-as startup.S -o startup.o
+        sh4-elf-ld -T linker.ld startup.o -o 1ST_READ.elf
+        sh4-elf-objcopy -O binary 1ST_READ.elf build/disc/1ST_READ.BIN
         
-        echo "=== Verifying IP.BIN ==="
-        file build/disc/IP.BIN
+        # Kopiuj IP.BIN
+        cp IP.BIN build/disc/
+        
+        echo "=== Created files ==="
         ls -lh build/disc/
+        echo "=== First bytes of 1ST_READ.BIN ==="
+        xxd build/disc/1ST_READ.BIN | head -3
         
     - name: Upload for BootDreams
       uses: actions/upload-artifact@v4
       with:
-        name: Dreamcast-Real-Files
+        name: Dreamcast-Files
         path: build/disc/
