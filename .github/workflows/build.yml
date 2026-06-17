@@ -7,18 +7,27 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      # 1. Pobieramy kod bezpiecznie na maszynie hosta (tu Node 24 zadziała idealnie)
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2. Odpalamy kontener tylko do wykonania komendy 'make' montując nasz folder jako roboczy
+      # Automat sam wykryje, gdzie schowałeś Makefile i tam uruchomi kompilację
       - name: Compile Code inside Container
         run: |
-          docker run --rm -v ${{ github.workspace }}:/project -w /project nold360/kallistios-sdk:latest make
+          if [ -f "Makefile" ]; then
+            echo "Znaleziono Makefile w folderze glownym."
+            docker run --rm -v ${{ github.workspace }}:/project -w /project nold360/kallistios-sdk:latest make
+          elif [ -f ".devcontainer/Makefile" ]; then
+            echo "Znaleziono Makefile w folderze .devcontainer."
+            docker run --rm -v ${{ github.workspace }}:/project -w /project/.devcontainer nold360/kallistios-sdk:latest make
+          else
+            echo "Blad: Nie znaleziono pliku Makefile!" && exit 1
+          fi
 
-      # 3. Wyciągamy gotowy plik binarny jako artefakt do pobrania
+      # Pobieramy plik niezależnie od tego, w którym folderze powstał
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Dreamcast_1st_read
-          path: 1st_read.bin
+          path: |
+            1st_read.bin
+            .devcontainer/1st_read.bin
