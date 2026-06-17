@@ -5,21 +5,17 @@ on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
+    container: fzero/kallistios:latest
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Dependencies
-        run: |
-          sudo apt-get update
-          # Instalujemy podstawowe narzędzia
-          sudo apt-get install -y make git gcc-sh-elf binutils-sh-elf
-          # Uwaga: To jest uproszczenie. KOS wymaga więcej zależności.
-          # Jeśli chcesz to zrobić "na szybko", polecam użyć sprawdzonego obrazu poniżej.
-
       - name: Compile
-        run: |
-          # Jeśli Makefile wymaga KOS_BASE, musisz go ustawić
-          export KOS_BASE=/opt/kos
-          make
+        run: make
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Dreamcast_1st_read
+          path: 1st_read.bin
