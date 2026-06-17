@@ -5,48 +5,46 @@ on: [push, pull_request]
 jobs:
   build-dreamcast:
     runs-on: ubuntu-latest
+    # Używamy gotowego obrazu z prekompilowanym toolchainem KallistiOS
+    container:
+      image: ghcr.io/dcemulation/kos:latest
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
-    - name: Build Docker Image
-      run: docker build -t dc-build-env .
-
-    - name: Find environ.sh location
+    - name: Install missing tools
       run: |
-        docker run --rm dc-build-env bash -c "
-          find /opt/KallistiOS -name 'environ.sh' -type f
-        "
+        apt-get update
+        apt-get install -y cmake genisoimage wget
 
-    - name: Build Game
+    - name: Download IP.BIN (boot sector for CD-R)
       run: |
-        docker run --rm -v $(pwd):/workspace -w /workspace dc-build-env bash -c "
-          if [ -f /opt/KallistiOS/environ.sh ]; then
-            source /opt/KallistiOS/environ.sh
-          elif [ -f /opt/KallistiOS/utils/environ.sh ]; then
-            source /opt/KallistiOS/utils/environ.sh
-          else
-            echo 'environ.sh not found, creating minimal version'
-            export KOS_BASE=/opt/KallistiOS
-            export KOS_TOOLCHAIN=/opt/toolchains/dc
-            export PATH=\$KOS_TOOLCHAIN/bin:\$PATH
-          fi && \
-          mkdir -p build && cd build && \
-          cmake -DCMAKE_TOOLCHAIN_FILE=\$KOS_BASE/utils/cmake/toolchain-dreamcast.cmake .. && \
-          make -j\$(nproc)
-        "
+        wget -q -O ip.bin https://raw.githubusercontent.com/KallistiOS/kos/master/utils/ipbin/ip.bin
 
-    - name: Create ISO
+    - name: Configure & Build
       run: |
-        docker run --rm -v $(pwd):/workspace -w /workspace dc-build-env bash -c "
-          mkdir -p build/disc && \
-          cp build/1ST_READ.BIN build/disc/ && \
-          cd build && \
-          mkisofs -C 0,11702 -V 'SEGA SEGAKATANA' -G /opt/KallistiOS/utils/ipbin/ip.bin -joliet -rock -o game.iso disc/
-        "
+        # 1. Ładujemy zmienne środowiskowe KallistiOS
+        source /opt/toolchains/dc/kos/environ.sh
+        
+        # 2. Przygotowujemy katalog build
+        mkdir -p build && cd build
+        
+        # 3. Kopiujemy ip.bin do katalogu build (wymagane przez CMake)
+        cp ../ip.bin .
+        
+        # 4. Konfiguracja CMake z toolchainem Dreamcast
+        cmake -DCMAKE_TOOLCHAIN_FILE=/opt/toolchains/dc/kos/utils/cmake/toolchain-dreamcast.cmake ..
+        
+        # 5. Kompilacja
+        make -j$(nproc)
+        
+        # 6. Generowanie ISO
+        make dist
 
-    - name: Upload ISO
+    - name: Upload CD-R Image
       uses: actions/upload-artifact@v4
       with:
         name: Dreamcast-GTA-Style-ISO
         path: build/game.iso
+        retention-days: 14
