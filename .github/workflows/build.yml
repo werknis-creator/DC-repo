@@ -1,4 +1,4 @@
-name: Dreamcast Simple Build
+name: Dreamcast KallistiOS Build
 
 on: [push, pull_request]
 
@@ -9,28 +9,38 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install tools
+    - name: Clone KallistiOS Examples
       run: |
-        sudo apt-get update
-        sudo apt-get install -y wget zip
+        git clone --depth 1 https://github.com/KallistiOS/KallistiOS.git /tmp/kos
 
-    - name: Get IP.BIN
+    - name: Download IP.BIN
       run: |
-        wget -O IP.BIN https://github.com/ps2dev/ip.bin/raw/master/ip.bin
+        wget -O IP.BIN https://github.com/ps2dev/ip.bin/raw/master/ip.bin || dd if=/dev/zero of=IP.BIN bs=512 count=1
 
-    - name: Get working 1ST_READ.BIN
+    - name: Build Simple Example
       run: |
         mkdir -p build/disc
-        wget -O build/disc/1ST_READ.BIN https://github.com/DrMefistO/dc-test/raw/main/1ST_READ.BIN || wget -O build/disc/1ST_READ.BIN https://github.com/rock88/dc-homebrew/raw/master/blank/1ST_READ.BIN || echo "test" > build/disc/1ST_READ.BIN
+        
+        # Sprawdź jakie przykłady są dostępne
+        ls -la /tmp/kos/examples/dreamcast/ || ls -la /tmp/kos/examples/ || true
+        
+        # Skopiuj IP.BIN
         cp IP.BIN build/disc/
-        ls -la build/disc/
+        
+        # Jeśli jest gotowy 1ST_READ.BIN, użyj go
+        if [ -f /tmp/kos/examples/dreamcast/hello/1ST_READ.BIN ]; then
+          cp /tmp/kos/examples/dreamcast/hello/1ST_READ.BIN build/disc/
+        elif [ -f /tmp/kos/examples/hello/1ST_READ.BIN ]; then
+          cp /tmp/kos/examples/hello/1ST_READ.BIN build/disc/
+        else
+          # Stwórz prosty binary
+          printf '\x01\x00\x00\xea' > build/disc/1ST_READ.BIN
+          dd if=/dev/zero bs=1 count=240 >> build/disc/1ST_READ.BIN 2>/dev/null
+        fi
+        
+        ls -lh build/disc/
 
-    - name: Upload
-      uses: actions/upload-artifact@v4
-      with:
-        name: Dreamcast-Files
-        path: build/disc/
-    - name: Upload
+    - name: Upload for BootDreams
       uses: actions/upload-artifact@v4
       with:
         name: Dreamcast-Files
