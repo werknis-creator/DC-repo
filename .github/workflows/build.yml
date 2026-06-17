@@ -1,0 +1,44 @@
+name: Dreamcast GTA-Style Build
+
+on: [push, pull_request]
+
+jobs:
+  build-dreamcast:
+    runs-on: ubuntu-latest
+    container:
+      image: dcemulation/kos:latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: apt-get update && apt-get install -y cmake genisoimage make git wget
+
+    - name: Download IP.BIN (Homebrew)
+      run: |
+        # Pobieramy standardowy plik IP.BIN używany w homebrew
+        wget -O ip.bin https://raw.githubusercontent.com/KallistiOS/kos/master/utils/ipbin/ip.bin
+
+    - name: Configure and Build
+      run: |
+        # Ładowanie środowiska KallistiOS
+        source /opt/toolchains/dc/kos/environ.sh
+        
+        mkdir -p build && cd build
+        
+        # Konfiguracja z toolchainem Dreamcast
+        cmake -DCMAKE_TOOLCHAIN_FILE=/opt/toolchains/dc/kos/utils/cmake/toolchain-dreamcast.cmake ..
+        
+        # Kompilacja
+        make -j$(nproc)
+        
+        # Generowanie ISO
+        make dist
+
+    - name: Upload CD-R Image
+      uses: actions/upload-artifact@v4
+      with:
+        name: Dreamcast-GTA-Style-ISO
+        path: build/game.iso
+        retention-days: 14
