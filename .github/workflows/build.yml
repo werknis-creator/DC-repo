@@ -14,12 +14,6 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y cmake genisoimage wget git
 
-    - name: Download KallistiOS
-      run: |
-        cd /tmp
-        git clone --depth 1 https://github.com/KallistiOS/KallistiOS.git
-        echo "KOS_BASE=/tmp/KallistiOS" >> $GITHUB_ENV
-
     - name: Download IP.BIN
       run: |
         wget -O ip.bin https://raw.githubusercontent.com/KallistiOS/kos/master/utils/ipbin/ip.bin || \
@@ -32,8 +26,23 @@ jobs:
         cp ip.bin build/
         cd build
         
-        # Tworzenie obrazu z właściwymi parametrami dla Dreamcast
-        mkisofs -C 0,11702 \
-                -V "SEGA SEGAKATANA" \
-                -G ip.bin \
-                -joliet \
+        # Tworzenie obrazu CDI dla Dreamcast
+        genisoimage -o game.cdi \
+                    -G ip.bin \
+                    -V "SEGA SEGAKATANA" \
+                    -C 0,11702 \
+                    -l \
+                    -J \
+                    -R \
+                    -rock \
+                    -joliet \
+                    disc
+        
+        # Sprawdź czy plik powstał
+        ls -lh game.cdi
+        
+    - name: Upload CDI
+      uses: actions/upload-artifact@v4
+      with:
+        name: Dreamcast-CDI
+        path: build/game.cdi
