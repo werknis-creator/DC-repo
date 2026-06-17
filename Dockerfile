@@ -28,16 +28,14 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /opt
 RUN git clone --depth 1 https://github.com/KallistiOS/KallistiOS.git
 
-# Pobranie osobnego repozytorium kos-toolchain
-RUN git clone --depth 1 https://github.com/KallistiOS/kos-toolchain.git
-
 ENV KOS_BASE=/opt/KallistiOS
 ENV KOS_TOOLCHAIN=/opt/toolchains/dc
 ENV PATH="/opt/toolchains/dc/bin:${PATH}"
 
-# Budowa toolchaina z właściwego miejsca
+# Budowa toolchaina używając dc-chain z repo KallistiOS
 RUN mkdir -p $KOS_TOOLCHAIN && \
-    cd /opt/kos-toolchain && \
-    ./build.sh
+    cd $KOS_BASE/utils/dc-chain && \
+    ./configure --prefix=$KOS_TOOLCHAIN && \
+    make -j$(nproc)
 
 WORKDIR /workspace
