@@ -25,16 +25,15 @@ jobs:
         wget -O ip.bin https://raw.githubusercontent.com/KallistiOS/kos/master/utils/ipbin/ip.bin || \
         dd if=/dev/zero of=ip.bin bs=512 count=1
 
-    - name: Create simple executable
+    - name: Create Dreamcast CDI
       run: |
         mkdir -p build/disc
         echo "dummy binary" > build/disc/1ST_READ.BIN
         cp ip.bin build/
         cd build
-        mkisofs -C 0,11702 -V "SEGA SEGAKATANA" -G ip.bin -joliet -rock -o game.iso disc/
-
-    - name: Upload ISO
-      uses: actions/upload-artifact@v4
-      with:
-        name: Dreamcast-ISO
-        path: build/game.iso
+        
+        # Tworzenie obrazu z właściwymi parametrami dla Dreamcast
+        mkisofs -C 0,11702 \
+                -V "SEGA SEGAKATANA" \
+                -G ip.bin \
+                -joliet \
