@@ -10,27 +10,24 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Wchodzimy do kontenera, ładujemy środowisko i bezwzględnie wracamy do folderu projektu
+      # Logujemy się (aby załadować środowisko) i od razu przechodzimy do /project przed wywołaniem make
       - name: Compile Code inside Container
         run: |
-          docker run --rm -v ${{ github.workspace }}:/project -w /project --entrypoint /bin/bash nold360/kallistios-sdk:latest -c "
-            echo '=== Ladujemy srodowisko KallistiOS ==='
-            if [ -f /opt/toolchains/dc/kos/environ.sh ]; then source /opt/toolchains/dc/kos/environ.sh; fi
-            if [ -f /etc/profile.d/kos.sh ]; then source /etc/profile.d/kos.sh; fi
-            
-            echo '=== Wymuszamy powrot do folderu gry ==='
-            cd /project
-            
-            echo '=== Uruchamiamy kompilacje ==='
-            make
-            
-            echo '=== Podglad plikow wewnatrz kontenera po make ==='
-            ls -la
-          "
+          if [ -f "Makefile" ]; then
+            echo "Znaleziono Makefile w folderze glownym."
+            docker run --rm -v ${{ github.workspace }}:/project -w /project --entrypoint /bin/bash nold360/kallistios-sdk:latest -l -c "cd /project && make"
+          elif [ -f ".devcontainer/Makefile" ]; then
+            echo "Znaleziono Makefile w folderze .devcontainer."
+            docker run --rm -v ${{ github.workspace }}:/project -w /project/.devcontainer --entrypoint /bin/bash nold360/kallistios-sdk:latest -l -c "cd /project/.devcontainer && make"
+          else
+            echo "Blad: Nie znaleziono pliku Makefile!" && exit 1
+          fi
 
-      # Przesyłamy wygenerowany plik binarny
+      # Ten krok wywołuje się tylko, gdy powyższe 'make' stworzy plik z pełnym sukcesem
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Dreamcast_1st_read
-          path: 1st_read.bin
+          path: |
+            1st_read.bin
+            .devcontainer/1st_read.bin
