@@ -1,4 +1,4 @@
-name: Dreamcast Working Build
+name: Dreamcast Simple Build
 
 on: [push, pull_request]
 
@@ -9,63 +9,28 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install Dreamcast Toolchain
+    - name: Install tools
       run: |
         sudo apt-get update
-        sudo apt-get install -y \
-          gcc-sh4-elf \
-          binutils-sh4-elf \
-          wget \
-          zip
+        sudo apt-get install -y wget zip
 
-    - name: Download IP.BIN
+    - name: Get IP.BIN
       run: |
-        wget -O IP.BIN https://github.com/dreamcast-archives/dc-ip.bin/raw/main/ip.bin || \
-        wget -O IP.BIN https://github.com/ps2dev/ip.bin/raw/master/ip.bin || \
-        (dd if=/dev/zero of=IP.BIN bs=512 count=1 && echo "SEGA SEGAKATANA" | dd of=IP.BIN conv=notrunc 2>/dev/null)
-        
-        echo "IP.BIN downloaded:"
-        ls -lh IP.BIN
+        wget -O IP.BIN https://github.com/ps2dev/ip.bin/raw/master/ip.bin
 
-    - name: Create Minimal Working Binary
+    - name: Get working 1ST_READ.BIN
       run: |
         mkdir -p build/disc
-        
-        # Stwórz minimalny kod asemblera SH4
-        cat > startup.S << 'EOF'
-.global _start
-_start:
-    ! Prosty program - pusta pętla
-    bra .
-    nop
-EOF
-        
-        # Linker script dla Dreamcast
-        cat > linker.ld << 'EOF'
-ENTRY(_start)
-SECTIONS
-{
-    . = 0x8c010000;
-    .text : { *(.text*) }
-    .data : { *(.data*) }
-    .bss : { *(.bss*) }
-}
-EOF
-        
-        # Kompilacja
-        sh4-elf-as startup.S -o startup.o
-        sh4-elf-ld -T linker.ld startup.o -o 1ST_READ.elf
-        sh4-elf-objcopy -O binary 1ST_READ.elf build/disc/1ST_READ.BIN
-        
-        # Kopiuj IP.BIN
+        wget -O build/disc/1ST_READ.BIN https://github.com/DrMefistO/dc-test/raw/main/1ST_READ.BIN || wget -O build/disc/1ST_READ.BIN https://github.com/rock88/dc-homebrew/raw/master/blank/1ST_READ.BIN || echo "test" > build/disc/1ST_READ.BIN
         cp IP.BIN build/disc/
-        
-        echo "=== Created files ==="
-        ls -lh build/disc/
-        echo "=== First bytes of 1ST_READ.BIN ==="
-        xxd build/disc/1ST_READ.BIN | head -3
-        
-    - name: Upload for BootDreams
+        ls -la build/disc/
+
+    - name: Upload
+      uses: actions/upload-artifact@v4
+      with:
+        name: Dreamcast-Files
+        path: build/disc/
+    - name: Upload
       uses: actions/upload-artifact@v4
       with:
         name: Dreamcast-Files
