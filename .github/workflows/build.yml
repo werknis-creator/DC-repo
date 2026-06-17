@@ -5,47 +5,28 @@ on: [push, pull_request]
 jobs:
   build-dreamcast:
     runs-on: ubuntu-latest
-    container:
-      image: ps2dev/ps2dev:latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-    - name: Install dependencies
-      run: |
-        apt-get update
-        apt-get install -y cmake genisoimage wget git
-
-    - name: Setup KallistiOS
-      run: |
-        cd /tmp
-        git clone --depth 1 https://github.com/KallistiOS/KallistiOS.git
-        cd KallistiOS
-        export KOS_BASE=$(pwd)
-        export KOS_TOOLCHAIN=/opt/toolchains/dc
-        mkdir -p $KOS_TOOLCHAIN
-        
-        # Kompilacja toolchaina (uproszczona)
-        cd toolchain
-        ./build.sh || true
-        
-        echo "KOS_BASE=$KOS_BASE" >> $GITHUB_ENV
-        echo "$KOS_BASE" >> $GITHUB_PATH
+    - name: Build Docker Image with KallistiOS
+      run: docker build -t dc-build-env .
+      # To zajmie ~30-40 minut przy pierwszym buildzie, potem będzie cache
 
     - name: Download IP.BIN
       run: |
         wget -q -O ip.bin https://github.com/KallistiOS/kos/raw/master/utils/ipbin/ip.bin || \
-        echo "Creating dummy ip.bin" && dd if=/dev/zero of=ip.bin bs=512 count=1
+        dd if=/dev/zero of=ip.bin bs=512 count=1
 
     - name: Build Game
       run: |
-        source /tmp/KallistiOS/environ.sh 2>/dev/null || true
-        mkdir -p build && cd build
-        cmake -DCMAKE_TOOLCHAIN_FILE=/tmp/KallistiOS/utils/cmake/toolchain-dreamcast.cmake .. 2>/dev/null || \
-        cmake ..
-        make -j$(nproc)
-        make dist 2>/dev/null || mkisofs -C 0,11702 -V "SEGA SEGAKATANA" -G ../ip.bin -joliet -rock -o game.iso disc/
+        docker run --rm -v $(pwd):/workspace -w /workspace dc-build-env bash -c "
+          source /opt/KallistiOS/environ.sh && \
+          mkdir -p build && cd build && \
+          cmake -DCMAKE_TOOLCHAIN_FILE=/opt/KallistiOS/utils/cmake/toolchain-dreamcast.cmake .. && \
+          make -j\$(nproc) && \
+          make dist
+        "
 
     - name: Upload ISO
       uses: actions/upload-artifact@v4
