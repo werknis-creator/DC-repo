@@ -4,38 +4,53 @@ on: [push, pull_request]
 
 jobs:
   build-dreamcast:
-    runs-on: ubuntu-latest
-    container:
-      image: einsteinx2/dcdev-kos-toolchain:latest
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Install dependencies
+    - name: Install KallistiOS Toolchain
       run: |
-        apt-get update
-        apt-get install -y cmake genisoimage make git wget
+        sudo apt-get update
+        sudo apt-get install -y \
+          gcc-sh4-elf \
+          binutils-sh4-elf \
+          cmake \
+          genisoimage \
+          make \
+          git \
+          wget \
+          xz-utils
 
+    - name: Download and Setup KallistiOS
+      run: |
+        cd /tmp
+        git clone https://github.com/KallistiOS/KallistiOS.git
+        cd KallistiOS
+        export KOS_BASE=$(pwd)
+        export KOS_TOOLCHAIN=/opt/toolchains/dc
+        mkdir -p $KOS_TOOLCHAIN
+        ln -s /usr/bin/sh4-elf-gcc $KOS_TOOLCHAIN/bin/sh4-elf-gcc 2>/dev/null || true
+        ln -s /usr/bin/sh4-elf-ld $KOS_TOOLCHAIN/bin/sh4-elf-ld 2>/dev/null || true
+        
     - name: Download IP.BIN
       run: |
         wget -O ip.bin https://raw.githubusercontent.com/KallistiOS/kos/master/utils/ipbin/ip.bin
 
-    - name: Configure and Build
+    - name: Build with CMake
       run: |
-        # Ładowanie środowiska KallistiOS
-        source /opt/toolchains/dc/kos/environ.sh
-        
         mkdir -p build && cd build
-        
-        # Konfiguracja z toolchainem Dreamcast
-        cmake -DCMAKE_TOOLCHAIN_FILE=/opt/toolchains/dc/kos/utils/cmake/toolchain-dreamcast.cmake ..
-        
-        # Kompilacja
+        cmake ..
         make -j$(nproc)
         
-        # Generowanie ISO
-        make dist
+    - name: Create ISO
+      run: |
+        mkdir -p build/disc
+        cp build/1ST_READ.BIN build/disc/
+        cp ip.bin build/
+        cd build
+        mkisofs -C 0,11702 -V "SEGA SEGAKATANA" -G ip.bin -joliet -rock -o game.iso disc/
 
     - name: Upload CD-R Image
       uses: actions/upload-artifact@v4
