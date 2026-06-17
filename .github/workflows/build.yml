@@ -4,37 +4,59 @@ on: [push, pull_request]
 
 jobs:
   build-dreamcast:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-    - name: Setup KallistiOS
-      uses: ps2dev/setup-kos@v1
-      with:
-        kos-version: 'latest'
-
-    - name: Install dependencies
+    - name: Install KallistiOS
       run: |
         sudo apt-get update
-        sudo apt-get install -y cmake genisoimage
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          genisoimage \
+          git \
+          wget \
+          xz-utils
+          
+        # Pobranie i kompilacja KallistiOS
+        cd /tmp
+        git clone --depth 1 https://github.com/KallistiOS/KallistiOS.git
+        cd KallistiOS
+        export KOS_BASE=$(pwd)
+        export KOS_TOOLCHAIN=/opt/kos
+        mkdir -p $KOS_TOOLCHAIN
+        
+        # Prosta kompilacja toolchaina
+        ./configure --prefix=$KOS_TOOLCHAIN
+        make -j$(nproc)
+        sudo make install
+        
+        echo "KOS_BASE=$KOS_BASE" >> $GITHUB_ENV
+        echo "KOS_TOOLCHAIN=$KOS_TOOLCHAIN" >> $GITHUB_ENV
+        echo "$KOS_TOOLCHAIN/bin" >> $GITHUB_PATH
 
     - name: Download IP.BIN
-      run: |
-        wget -O ip.bin https://raw.githubusercontent.com/KallistiOS/kos/master/utils/ipbin/ip.bin
+      run: wget -O ip.bin https://raw.githubusercontent.com/KallistiOS/kos/master/utils/ipbin/ip.bin
 
-    - name: Build Game
+    - name: Build
       run: |
         source $KOS_BASE/environ.sh
         mkdir -p build && cd build
         cmake -DCMAKE_TOOLCHAIN_FILE=$KOS_BASE/utils/cmake/toolchain-dreamcast.cmake ..
         make -j$(nproc)
-        make dist
+        
+    - name: Create ISO
+      run: |
+        mkdir -p build/disc
+        cp build/1ST_READ.BIN build/disc/
+        cp ip.bin build/
+        cd build
+        mkisofs -C 0,11702 -V "SEGA SEGAKATANA" -G ip.bin -joliet -rock -o game.iso disc/
 
-    - name: Upload CD-R Image
+    - name: Upload ISO
       uses: actions/upload-artifact@v4
       with:
         name: Dreamcast-GTA-Style-ISO
         path: build/game.iso
-        retention-days: 14
