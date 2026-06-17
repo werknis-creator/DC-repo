@@ -24,17 +24,21 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /tmp
+# Pobranie KallistiOS
+WORKDIR /opt
 RUN git clone --depth 1 https://github.com/KallistiOS/KallistiOS.git && \
     cd KallistiOS && \
-    export KOS_BASE=$(pwd) && \
-    export KOS_TOOLCHAIN=/opt/toolchains/dc && \
-    mkdir -p $KOS_TOOLCHAIN && \
-    echo "KOS_BASE=$KOS_BASE" >> /etc/environment && \
-    echo "KOS_TOOLCHAIN=$KOS_TOOLCHAIN" >> /etc/environment
+    ls -la
 
-# Skopiuj ip.bin z repozytorium KallistiOS do workspace
+# Ustawienie zmiennych środowiskowych
+ENV KOS_BASE=/opt/KallistiOS
+ENV KOS_TOOLCHAIN=/opt/toolchains/dc
+
+RUN mkdir -p $KOS_TOOLCHAIN
+
+# Sprawdzenie struktury i znalezienie environ.sh
+WORKDIR /opt/KallistiOS
+RUN find . -name "environ.sh" -type f 2>/dev/null || echo "environ.sh not found"
+
 WORKDIR /workspace
-RUN cp /tmp/KallistiOS/utils/ipbin/ip.bin /workspace/ip.bin 2>/dev/null || true
-
 CMD ["/bin/bash"]
