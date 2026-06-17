@@ -2,7 +2,6 @@ FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Instalacja zależności
 RUN apt-get update && apt-get install -y \
     build-essential \
     cmake \
@@ -25,7 +24,6 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Pobranie i budowa KallistiOS
 WORKDIR /tmp
 RUN git clone --depth 1 https://github.com/KallistiOS/KallistiOS.git && \
     cd KallistiOS && \
@@ -33,10 +31,10 @@ RUN git clone --depth 1 https://github.com/KallistiOS/KallistiOS.git && \
     export KOS_TOOLCHAIN=/opt/toolchains/dc && \
     mkdir -p $KOS_TOOLCHAIN && \
     echo "KOS_BASE=$KOS_BASE" >> /etc/environment && \
-    echo "KOS_TOOLCHAIN=$KOS_TOOLCHAIN" >> /etc/environment && \
-    echo "KOS_BASE=$KOS_BASE" >> /root/.bashrc && \
-    echo "KOS_TOOLCHAIN=$KOS_TOOLCHAIN" >> /root/.bashrc
+    echo "KOS_TOOLCHAIN=$KOS_TOOLCHAIN" >> /etc/environment
 
+# Skopiuj ip.bin z repozytorium KallistiOS do workspace
 WORKDIR /workspace
+RUN cp /tmp/KallistiOS/utils/ipbin/ip.bin /workspace/ip.bin 2>/dev/null || true
 
 CMD ["/bin/bash"]
