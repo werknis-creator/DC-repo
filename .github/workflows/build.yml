@@ -19,41 +19,22 @@ jobs:
         wget -O ip.bin https://raw.githubusercontent.com/KallistiOS/kos/master/utils/ipbin/ip.bin || \
         dd if=/dev/zero of=ip.bin bs=512 count=1
 
-    - name: Create Dreamcast Disc
+    - name: Build Game (1ST_READ.BIN)
       run: |
         mkdir -p build/disc
+        # Tutaj powinien być prawdziwy 1ST_READ.BIN z gry
+        # Na razie tworzymy dummy plik
         echo "dummy" > build/disc/1ST_READ.BIN
-        cp ip.bin build/
-        cd build
         
-        # Tworzenie ISO dla Dreamcast
-        genisoimage -o game.iso \
-                    -G ip.bin \
-                    -V "SEGA SEGAKATANA" \
-                    -C 0,11702 \
-                    -l \
-                    -J \
-                    -R \
-                    disc/
+        # Kopiuj IP.BIN do folderu
+        cp ip.bin build/disc/
         
-        # Spróbuj pobrać cdi4dc z alternatywnego źródła
-        if wget -q https://github.com/DrMefistO/dc-cdi-builder/raw/master/cdi4dc; then
-            chmod +x cdi4dc
-            ./cdi4dc game.iso game.cdi "Dreamcast Game"
-            echo "CDI_CREATED=true" >> $GITHUB_ENV
-        else
-            echo "CDI tool not available, using ISO"
-            # Zmień nazwę na .cdi dla kompatybilności
-            cp game.iso game.cdi
-            echo "CDI_CREATED=false" >> $GITHUB_ENV
-        fi
+        # Lista plików
+        echo "=== Files for BootDreams ==="
+        ls -lh build/disc/
         
-        ls -lh
-        
-    - name: Upload Dreamcast Image
+    - name: Upload Files for BootDreams
       uses: actions/upload-artifact@v4
       with:
-        name: Dreamcast-Game
-        path: |
-          build/game.iso
-          build/game.cdi
+        name: Dreamcast-BootDreams-Files
+        path: build/disc/
