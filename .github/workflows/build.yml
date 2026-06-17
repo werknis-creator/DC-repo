@@ -9,23 +9,29 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Setup Docker
-      run: docker build -t dc-simple .
+    - name: Build Docker Image
+      run: docker build -t dc-build-env .
 
     - name: Download IP.BIN
-      run: wget -O ip.bin https://github.com/KallistiOS/kos/raw/master/utils/ipbin/ip.bin || dd if=/dev/zero of=ip.bin bs=512 count=1
-
-    - name: Build
       run: |
-        docker run --rm -v $(pwd):/workspace -w /workspace dc-simple bash -c "
+        wget -O ip.bin https://github.com/KallistiOS/kos/raw/master/utils/ipbin/ip.bin || \
+        dd if=/dev/zero of=ip.bin bs=512 count=1
+
+    - name: Build Game
+      run: |
+        docker run --rm -v $(pwd):/workspace -w /workspace dc-build-env bash -c "
+          export KOS_BASE=/opt/KallistiOS && \
+          export KOS_TOOLCHAIN=/opt/toolchains/dc && \
+          export PATH=/opt/toolchains/dc/bin:\$PATH && \
+          source /opt/KallistiOS/environ.sh && \
           mkdir -p build && cd build && \
-          cmake .. && \
-          make && \
+          cmake -DCMAKE_TOOLCHAIN_FILE=/opt/KallistiOS/utils/cmake/toolchain-dreamcast.cmake .. && \
+          make -j\$(nproc) && \
           make dist
         "
 
     - name: Upload ISO
       uses: actions/upload-artifact@v4
       with:
-        name: Dreamcast-ISO
+        name: Dreamcast-GTA-Style-ISO
         path: build/game.iso
