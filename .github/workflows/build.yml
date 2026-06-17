@@ -1,34 +1,43 @@
-name: Dreamcast Working Binary
+name: Dreamcast Build - Official Example
 
 on: [push, pull_request]
 
 jobs:
   build:
     runs-on: ubuntu-22.04
+    container:
+      image: ghcr.io/ps2dev/ps2dev:latest
 
     steps:
     - uses: actions/checkout@v4
 
-    - name: Create Files Locally
+    - name: Install KallistiOS
       run: |
-        mkdir -p build/disc
+        apt-get update
+        apt-get install -y git make wget
         
-        # Stwórz IP.BIN lokalnie (512 bajtów z nagłówkiem SEGA)
-        dd if=/dev/zero of=build/disc/IP.BIN bs=512 count=1 2>/dev/null
-        printf 'SEGA SEGAKATANA ' | dd of=build/disc/IP.BIN conv=notrunc 2>/dev/null
+    - name: Clone and Build Example
+      run: |
+        cd /tmp
+        git clone --depth 1 https://github.com/KallistiOS/KallistiOS.git
+        cd KallistiOS
         
-        # Stwórz minimalny binary SH4
-        printf '\x01\x00\x00\x00' > build/disc/1ST_READ.BIN
-        printf '\xfe\xff\x09\x00' >> build/disc/1ST_READ.BIN
-        dd if=/dev/zero bs=1 count=504 >> build/disc/1ST_READ.BIN 2>/dev/null
+        # Skompiluj prosty przykład hello
+        cd examples/dreamcast/hello
+        make
         
-        echo "Files created:"
-        ls -lh build/disc/
-        xxd build/disc/1ST_READ.BIN
-        xxd build/disc/IP.BIN | head -5
+        # Przygotuj pliki do BootDreams
+        mkdir -p /workspace/build/disc
+        cp 1ST_READ.BIN /workspace/build/disc/
+        
+        # Pobierz IP.BIN
+        wget -O /workspace/build/disc/IP.BIN https://github.com/ps2dev/ip.bin/raw/master/ip.bin
+        
+        echo "Done!"
+        ls -lh /workspace/build/disc/
 
-    - name: Upload for BootDreams
+    - name: Upload
       uses: actions/upload-artifact@v4
       with:
-        name: Dreamcast-Files
+        name: Dreamcast-Ready-Files
         path: build/disc/
