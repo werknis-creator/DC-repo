@@ -10,25 +10,20 @@ RUN apt-get update && apt-get install -y \
     git \
     wget \
     xz-utils \
-    patch \
-    texinfo \
-    flex \
-    bison \
-    libgmp3-dev \
-    libmpc-dev \
-    libmpfr-dev \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /opt
-RUN git clone --depth 1 https://github.com/KallistiOS/KallistiOS.git
+# Pobranie gotowego toolchaina KallistiOS
+RUN mkdir -p /opt/toolchains/dc && \
+    cd /opt/toolchains/dc && \
+    wget -q https://github.com/KallistiOS/kos-toolchain/releases/download/continuous/kos-toolchain-linux-x86_64.tar.xz && \
+    tar -xf kos-toolchain-linux-x86_64.tar.xz && \
+    rm kos-toolchain-linux-x86_64.tar.xz
 
 ENV KOS_BASE=/opt/KallistiOS
 ENV KOS_TOOLCHAIN=/opt/toolchains/dc
 ENV PATH="/opt/toolchains/dc/bin:${PATH}"
 
-# Kompilacja toolchaina - BEZ || true żeby się nie ukrywały błędy
-RUN mkdir -p $KOS_TOOLCHAIN && \
-    cd $KOS_BASE/toolchain && \
-    ./build.sh
+# Pobranie samego KallistiOS (bez kompilacji toolchaina)
+RUN git clone --depth 1 https://github.com/KallistiOS/KallistiOS.git /opt/KallistiOS
 
 WORKDIR /workspace
