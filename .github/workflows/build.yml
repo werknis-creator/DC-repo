@@ -13,7 +13,10 @@ jobs:
       run: docker build -t dc-build-env .
 
     - name: Download IP.BIN
-      run: wget -O ip.bin https://raw.githubusercontent.com/KallistiOS/kos/master/utils/ipbin/ip.bin
+      run: |
+        wget -O ip.bin https://github.com/KallistiOS/kos/raw/master/utils/ipbin/ip.bin || \
+        wget -O ip.bin https://raw.githubusercontent.com/ps2dev/ip.bin/master/ip.bin || \
+        curl -L -o ip.bin https://github.com/dreamcast-archives/dc-ip.bin/releases/download/latest/ip.bin
 
     - name: Build Game
       run: |
