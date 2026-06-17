@@ -5,7 +5,7 @@ on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: fzero/kallistios:latest
+    container: nold360/kallistios-sdk:latest
     
     steps:
       - name: Checkout code
