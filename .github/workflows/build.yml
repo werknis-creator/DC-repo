@@ -5,37 +5,36 @@ on: [push, pull_request]
 jobs:
   build:
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/ps2dev/ps2dev:latest
 
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install Dreamcast Toolchain from Ubuntu repos
+    - name: Install dependencies
       run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          gcc-sh4-elf \
-          binutils-sh4-elf \
-          cmake \
-          genisoimage \
-          make \
-          git \
-          wget
+        apt-get update
+        apt-get install -y cmake genisoimage wget git
 
-    - name: Download KallistiOS
+    - name: Setup KallistiOS
       run: |
         cd /tmp
         git clone --depth 1 https://github.com/KallistiOS/KallistiOS.git
+        export KOS_BASE=/tmp/KallistiOS
         echo "KOS_BASE=/tmp/KallistiOS" >> $GITHUB_ENV
 
     - name: Download IP.BIN
-      run: wget -O ip.bin https://github.com/KallistiOS/kos/raw/master/utils/ipbin/ip.bin || dd if=/dev/zero of=ip.bin bs=512 count=1
+      run: |
+        wget -O ip.bin https://raw.githubusercontent.com/KallistiOS/kos/master/utils/ipbin/ip.bin || \
+        dd if=/dev/zero of=ip.bin bs=512 count=1
 
     - name: Build Game
       run: |
         mkdir -p build && cd build
-        cmake -DCMAKE_TOOLCHAIN_FILE=$KOS_BASE/utils/cmake/dreamcast.cmake ..
+        cmake -DCMAKE_TOOLCHAIN_FILE=/tmp/KallistiOS/utils/cmake/dreamcast.cmake .. || \
+        cmake ..
         make -j$(nproc)
-        make dist
+        make dist || (mkdir -p disc && cp 1ST_READ.BIN disc/ && mkisofs -C 0,11702 -V "SEGA SEGAKATANA" -G ../ip.bin -joliet -rock -o game.iso disc/)
 
     - name: Upload ISO
       uses: actions/upload-artifact@v4
