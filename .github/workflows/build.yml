@@ -5,20 +5,21 @@ on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
-    # Używamy gotowego kontenera z kompilatorami Dreamcast
-    container: ghcr.io/kazade/kallisti-os:latest
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          # Instalujemy podstawowe narzędzia
+          sudo apt-get install -y make git gcc-sh-elf binutils-sh-elf
+          # Uwaga: To jest uproszczenie. KOS wymaga więcej zależności.
+          # Jeśli chcesz to zrobić "na szybko", polecam użyć sprawdzonego obrazu poniżej.
+
       - name: Compile
         run: |
-          # Komenda make automatycznie użyje zmiennych z kontenera
+          # Jeśli Makefile wymaga KOS_BASE, musisz go ustawić
+          export KOS_BASE=/opt/kos
           make
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: MojaGraDreamcast
-          path: gra.elf
