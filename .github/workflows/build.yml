@@ -10,26 +10,27 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Setup Dreamcast Build Environment
+    - name: Setup KallistiOS
+      uses: ps2dev/setup-kos@v1
+      with:
+        kos-version: 'latest'
+
+    - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y cmake genisoimage make git wget
-        
+        sudo apt-get install -y cmake genisoimage
+
     - name: Download IP.BIN
       run: |
         wget -O ip.bin https://raw.githubusercontent.com/KallistiOS/kos/master/utils/ipbin/ip.bin
 
-    - name: Build using Docker
+    - name: Build Game
       run: |
-        docker run --rm -v $(pwd):/workspace -w /workspace \
-          bluecrabab/dc-kos-toolchain:latest \
-          bash -c "
-            source /opt/toolchains/dc/kos/environ.sh && \
-            mkdir -p build && cd build && \
-            cmake -DCMAKE_TOOLCHAIN_FILE=/opt/toolchains/dc/kos/utils/cmake/toolchain-dreamcast.cmake .. && \
-            make -j\$(nproc) && \
-            make dist
-          "
+        source $KOS_BASE/environ.sh
+        mkdir -p build && cd build
+        cmake -DCMAKE_TOOLCHAIN_FILE=$KOS_BASE/utils/cmake/toolchain-dreamcast.cmake ..
+        make -j$(nproc)
+        make dist
 
     - name: Upload CD-R Image
       uses: actions/upload-artifact@v4
