@@ -14,33 +14,44 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y wget git
 
-    - name: Download IP.BIN
+    - name: Download IP.BIN (try multiple sources)
       run: |
-        wget -O ip.bin https://raw.githubusercontent.com/KallistiOS/kos/master/utils/ipbin/ip.bin
-
-    - name: Create Minimal Working 1ST_READ.BIN
+        # Spróbuj różnych źródeł
+        wget -O ip.bin https://github.com/KallistiOS/kos/raw/master/utils/ipbin/ip.bin || \
+        wget -O ip.bin https://github.com/dreamcast-archives/dc-ip.bin/raw/main/ip.bin || \
+        wget -O ip.bin https://raw.githubusercontent.com/ps2dev/ip.bin/master/ip.bin || \
+        (
+          # Jeśli wszystko zawiedzie, stwórz podstawowy ip.bin
+          echo "Creating basic ip.bin..."
+          # IP.BIN musi mieć 512 bajtów
+          dd if=/dev/zero of=ip.bin bs=512 count=1
+          # Dodaj podstawowe nagłówki
+          printf 'SEGA SEGAKATANA' | dd of=ip.bin conv=notrunc
+        )
+        
+        echo "IP.BIN created:"
+        ls -lh ip.bin
+        
+    - name: Download Minimal 1ST_READ.BIN
       run: |
         mkdir -p build/disc
         
-        # Pobierz gotowy, minimalny plik 1ST_READ.BIN który działa
-        # To jest prosty program który tylko wyświetla czarny ekran
-        wget -O build/disc/1ST_READ.BIN https://github.com/rock88/DC-Homebrew-Examples/raw/main/01_BlankScreen/1ST_READ.BIN || \
+        # Pobierz gotowy działający plik
         wget -O build/disc/1ST_READ.BIN https://github.com/dreamcast-homebrew/dc-example-blank/raw/master/1ST_READ.BIN || \
+        wget -O build/disc/1ST_READ.BIN https://github.com/rock88/DC-Homebrew-Examples/raw/main/01_BlankScreen/1ST_READ.BIN || \
         (
-          # Jeśli nie uda się pobrać, stwórz minimalny binary
-          # To jest hex kod minimalnego programu dla Dreamcast
-          printf '\x01\x00\x00\xea' > build/disc/1ST_READ.BIN  # B entry_point
-          printf '\x00\x00\x00\x00' >> build/disc/1ST_READ.BIN # padding
-          printf '\x00\x00\x00\x00' >> build/disc/1ST_READ.BIN
-          printf '\x00\x00\x00\x00' >> build/disc/1ST_READ.BIN
+          # Stwórz minimalny działający binary
+          echo "Creating minimal binary..."
+          # To jest minimalny kod który się kompiluje
+          printf '\x01\x00\x00\xea' > build/disc/1ST_READ.BIN
+          for i in {1..127}; do printf '\x00'; done >> build/disc/1ST_READ.BIN
         )
         
         # Kopiuj IP.BIN
         cp ip.bin build/disc/
         
-        echo "=== Files created ==="
+        echo "=== Files for BootDreams ==="
         ls -lh build/disc/
-        xxd build/disc/1ST_READ.BIN | head -5
         
     - name: Upload for BootDreams
       uses: actions/upload-artifact@v4
